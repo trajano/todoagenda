@@ -3,6 +3,7 @@ package org.andstatus.todoagenda.provider
 import android.database.Cursor
 import android.net.Uri
 import android.provider.CalendarContract
+import android.provider.CalendarContract.Attendees
 import org.andstatus.todoagenda.BaseWidgetTest
 import org.andstatus.todoagenda.calendar.CalendarEventProvider
 import org.andstatus.todoagenda.util.PermissionsUtil
@@ -114,6 +115,21 @@ class FakeCalendarContentProviderTest : BaseWidgetTest() {
         val jsonOutput = inputs1.toJson(provider.context, provider.widgetId, true)
         val inputs2 = QueryResultsStorage.fromJson(provider.widgetId, jsonOutput)
         Assert.assertEquals(inputs1, inputs2)
+    }
+
+    @Test
+    fun subscribedCalendarsSelectionShouldAllowNullSelfAttendeeStatus() {
+        val eventsSelection = CalendarEventProvider.EVENT_SELECTION
+        Assert.assertTrue(
+            "Selection should include declined-attendee filter",
+            eventsSelection.contains(
+                CalendarContract.Instances.SELF_ATTENDEE_STATUS + "!=" + Attendees.ATTENDEE_STATUS_DECLINED
+            )
+        )
+        Assert.assertTrue(
+            "Selection should include NULL attendee status to allow subscribed calendars",
+            eventsSelection.contains(CalendarContract.Instances.SELF_ATTENDEE_STATUS + " IS NULL")
+        )
     }
 
     companion object {

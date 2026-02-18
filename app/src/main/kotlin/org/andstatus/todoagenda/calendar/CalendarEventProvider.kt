@@ -291,9 +291,14 @@ class CalendarEventProvider(
                 CalendarContract.Calendars.ACCOUNT_NAME,
             )
         const val EVENT_SORT_ORDER = "${START_DAY} ASC, ${ALL_DAY} DESC, $BEGIN ASC "
-        private const val EVENT_SELECTION = (
-            CalendarContract.Instances.SELF_ATTENDEE_STATUS + "!=" +
-                Attendees.ATTENDEE_STATUS_DECLINED
+        // Subscribed/read-only calendars often have NULL SELF_ATTENDEE_STATUS.
+        // Include NULL to avoid filtering out those events while still excluding declined ones.
+        const val EVENT_SELECTION = (
+            "(" +
+                CalendarContract.Instances.SELF_ATTENDEE_STATUS + "!=" + Attendees.ATTENDEE_STATUS_DECLINED +
+                " OR " +
+                CalendarContract.Instances.SELF_ATTENDEE_STATUS + " IS NULL" +
+                ")"
         )
 
         fun correctStartOfTimeRangeForQuery(startDateIn: DateTime): DateTime =
