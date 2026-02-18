@@ -294,6 +294,11 @@ class RemoteViewsFactory(
 
     companion object {
         private val TAG = RemoteViewsFactory::class.java.simpleName
+        // Test seam: RemoteViews does not provide reliable readback of applied visibility,
+        // so this pure mapping is exposed to assert HIDDEN => GONE in instrumentation tests.
+        internal fun headerParentVisibility(widgetHeaderLayout: WidgetHeaderLayout): Int =
+            if (widgetHeaderLayout == WidgetHeaderLayout.HIDDEN) View.GONE else View.VISIBLE
+
         val factories = ConcurrentHashMap<Int, RemoteViewsFactory>()
         private const val MAX_NUMBER_OF_WIDGETS = 100
         private const val REQUEST_CODE_ADD_EVENT = 2
@@ -354,26 +359,30 @@ class RemoteViewsFactory(
         ) {
             Log.d(TAG, settings.widgetId.toString() + " configureWidgetHeader, layout:" + settings.widgetHeaderLayout)
             rv.removeAllViews(R.id.header_parent)
-            if (settings.widgetHeaderLayout != WidgetHeaderLayout.HIDDEN) {
-                val headerView =
-                    RemoteViews(
-                        settings.context.packageName,
-                        settings.widgetHeaderLayout.widgetLayout?.shadowed(settings.textShadow) ?: 0,
-                    )
-                rv.addView(R.id.header_parent, headerView)
-                RemoteViewsUtil.setBackgroundColor(
-                    rv,
-                    R.id.action_bar,
-                    settings.colors().getBackgroundColor(BackgroundColorPref.WIDGET_HEADER),
-                )
-                configureCurrentDate(settings, rv)
-                setActionIcons(settings, rv)
-                configureGotoToday(settings, rv)
-                configureAddCalendarEvent(settings, rv)
-                configureAddTask(settings, rv)
-                configureRefresh(settings, rv)
-                configureOverflowMenu(settings, rv)
+            // RemoteViews can be partially reused by launchers, so visibility must be set explicitly.
+            val headerVisibility = headerParentVisibility(settings.widgetHeaderLayout)
+            rv.setViewVisibility(R.id.header_parent, headerVisibility)
+            if (headerVisibility == View.GONE) {
+                return
             }
+            val headerView =
+                RemoteViews(
+                    settings.context.packageName,
+                    settings.widgetHeaderLayout.widgetLayout?.shadowed(settings.textShadow) ?: 0,
+                )
+            rv.addView(R.id.header_parent, headerView)
+            RemoteViewsUtil.setBackgroundColor(
+                rv,
+                R.id.action_bar,
+                settings.colors().getBackgroundColor(BackgroundColorPref.WIDGET_HEADER),
+            )
+            configureCurrentDate(settings, rv)
+            setActionIcons(settings, rv)
+            configureGotoToday(settings, rv)
+            configureAddCalendarEvent(settings, rv)
+            configureAddTask(settings, rv)
+            configureRefresh(settings, rv)
+            configureOverflowMenu(settings, rv)
         }
 
         private fun configureCurrentDate(
